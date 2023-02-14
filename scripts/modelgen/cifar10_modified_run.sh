@@ -1,7 +1,7 @@
-main_output_folder="/scratch/jialin/trojai/output/"
+main_output_folder="/data/yefan0726/checkpoints/trojai/output/"
 data_folder=$main_output_folder"data/cifar10"
 experiment_path=$main_output_folder"experiments_data"
-models_output=$main_output_folder"checkpoints"
+models_output=$main_output_folder"checkpoints/"
 tensorboard_dir=$models_output"tensorboard"
 
 
@@ -20,4 +20,4 @@ CUDA_VISIBLE_DEVICES=3 python gen_and_train_cifar10_modified.py \
             --trigger_classes 1 2 3 4 \
             --learning_rate 0.001 \
             --batch_size 32 \
-            --weight_decay 0 \
+            --weight_decay 0 

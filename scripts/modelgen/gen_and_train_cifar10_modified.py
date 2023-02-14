@@ -7,6 +7,7 @@ import multiprocessing
 import os
 import time
 import sys
+import shutil
 from numpy.random import RandomState
 
 import torch
@@ -62,7 +63,7 @@ if __name__ == "__main__":
     parser.add_argument('--tensorboard_dir', type=str, default=None, help='Folder for logging tensorboard')
     parser.add_argument('--gpu', action='store_true')
     parser.add_argument('--early_stopping', action='store_true')
-    parser.add_argument('--num_epochs', type=int, default=20)
+    parser.add_argument('--num_epochs', type=int, default=30)
     parser.add_argument('--train_val_split', help='Amount of train data to use for validation', default=0.05, type=float)
     
     parser.add_argument('--id', type=str)
@@ -173,27 +174,27 @@ if __name__ == "__main__":
     clean_dataset_rootdir = os.path.join(toplevel_folder, f'cifar10_clean_{MASTER_SEED}')
     mod_dataset_rootdir = f'cifar10_ig_gotham_trigger_{MASTER_SEED}'
 
-    if not os.path.exists(clean_dataset_rootdir):
-        # create the clean data
-        master_random_state_object.set_state(start_state)
-        cifar10.create_clean_dataset(data_folder,
-                                    clean_dataset_rootdir, train_output_csv_file, test_output_csv_file,
-                                    'cifar10_train_', 'cifar10_test_', [], master_random_state_object)
-    else:
-        print('clean dataset path already exist')
-    if not os.path.exists(os.path.join(toplevel_folder, mod_dataset_rootdir)):
-        # create a triggered version of the train data according to the configuration above
-        master_random_state_object.set_state(start_state)
-        tdx.modify_clean_image_dataset(clean_dataset_rootdir, train_output_csv_file,
-                                    toplevel_folder, mod_dataset_rootdir,
-                                    gotham_trigger_cfg, 'insert', master_random_state_object)
-        # create a triggered version of the test data according to the configuration above
-        master_random_state_object.set_state(start_state)
-        tdx.modify_clean_image_dataset(clean_dataset_rootdir, test_output_csv_file,
-                                    toplevel_folder, mod_dataset_rootdir,
-                                    gotham_trigger_cfg, 'insert', master_random_state_object)
-    else:
-        print('triggered dataset path already exist')
+    #if not os.path.exists(clean_dataset_rootdir):
+    # create the clean data
+    master_random_state_object.set_state(start_state)
+    cifar10.create_clean_dataset(data_folder,
+                                clean_dataset_rootdir, train_output_csv_file, test_output_csv_file,
+                                'cifar10_train_', 'cifar10_test_', [], master_random_state_object)
+    #else:
+    #    print('clean dataset path already exist')
+    #if not os.path.exists(os.path.join(toplevel_folder, mod_dataset_rootdir)):
+    # create a triggered version of the train data according to the configuration above
+    master_random_state_object.set_state(start_state)
+    tdx.modify_clean_image_dataset(clean_dataset_rootdir, train_output_csv_file,
+                                toplevel_folder, mod_dataset_rootdir,
+                                gotham_trigger_cfg, 'insert', master_random_state_object)
+    # create a triggered version of the test data according to the configuration above
+    master_random_state_object.set_state(start_state)
+    tdx.modify_clean_image_dataset(clean_dataset_rootdir, test_output_csv_file,
+                                toplevel_folder, mod_dataset_rootdir,
+                                gotham_trigger_cfg, 'insert', master_random_state_object)
+    # else:
+    #     print('triggered dataset path already exist')
 
     ############# Create experiments from the data ############
     # Create a clean data experiment, which is just the original CIFAR10 experiment where clean data is used for
@@ -317,3 +318,8 @@ if __name__ == "__main__":
     start = time.time()
     model_generator.run()
     print("\nTime to run: ", (time.time() - start) / 60 / 60, 'hours')
+
+    print("Delete the temporary dataset")
+    shutil.rmtree(clean_dataset_rootdir)  
+    shutil.rmtree(os.path.join(toplevel_folder, mod_dataset_rootdir))  
+    
