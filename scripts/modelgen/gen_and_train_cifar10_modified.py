@@ -165,34 +165,22 @@ if __name__ == "__main__":
     ############# Create the data ############
     # create the clean data
     clean_dataset_rootdir = os.path.join(toplevel_folder, f'cifar10_clean_{MASTER_SEED}')
-    if not os.path.exists(clean_dataset_rootdir):
-        master_random_state_object.set_state(start_state)
-        cifar10.create_clean_dataset(data_folder,
-                                    clean_dataset_rootdir, train_output_csv_file, test_output_csv_file,
-                                    'cifar10_train_', 'cifar10_test_', [], master_random_state_object)
-    else:
-        print(f"folder exists: {clean_dataset_rootdir}")
-
-    
+    master_random_state_object.set_state(start_state)
+    cifar10.create_clean_dataset(data_folder,
+                                 clean_dataset_rootdir, train_output_csv_file, test_output_csv_file,
+                                 'cifar10_train_', 'cifar10_test_', [], master_random_state_object)
+    # create a triggered version of the train data according to the configuration above
     mod_dataset_rootdir = f'cifar10_ig_gotham_trigger_{MASTER_SEED}'
-    if not os.path.exists(os.path.join(toplevel_folder, mod_dataset_rootdir)):
-        # create a triggered version of the train data according to the configuration above
-        master_random_state_object.set_state(start_state)
-        tdx.modify_clean_image_dataset(clean_dataset_rootdir, train_output_csv_file,
+    master_random_state_object.set_state(start_state)
+    tdx.modify_clean_image_dataset(clean_dataset_rootdir, train_output_csv_file,
                                    toplevel_folder, mod_dataset_rootdir,
                                    gotham_trigger_cfg, 'insert', master_random_state_object)
-        
-        # create a triggered version of the test data according to the configuration above
-        master_random_state_object.set_state(start_state)
-        tdx.modify_clean_image_dataset(clean_dataset_rootdir, test_output_csv_file,
+    # create a triggered version of the test data according to the configuration above
+    master_random_state_object.set_state(start_state)
+    tdx.modify_clean_image_dataset(clean_dataset_rootdir, test_output_csv_file,
                                    toplevel_folder, mod_dataset_rootdir,
                                    gotham_trigger_cfg, 'insert', master_random_state_object)
-        
-    else:
-        print(f"folder exists: {os.path.join(toplevel_folder, mod_dataset_rootdir)}")
-        print(f"folder exists: {os.path.join(toplevel_folder, mod_dataset_rootdir)}")
 
-        
     ############# Create experiments from the data ############
     # Create a clean data experiment, which is just the original CIFAR10 experiment where clean data is used for
     # training and testing the model
@@ -213,15 +201,15 @@ if __name__ == "__main__":
                                     split_clean_trigger=False,
                                     trigger_frac=trigger_frac,
                                     triggered_classes=trigger_classes)
-    train_df.to_csv(os.path.join(toplevel_folder, f'{a.id}_experiment_train.csv'), index=None)
+    train_df.to_csv(os.path.join(toplevel_folder, f'id_{a.id}_experiment_train.csv'), index=None)
     test_clean_df, test_triggered_df = e.create_experiment(os.path.join(toplevel_folder, f'cifar10_clean_{MASTER_SEED}', 'test_cifar10.csv'),
                                                             os.path.join(toplevel_folder, mod_dataset_rootdir),
                                                             mod_filename_filter='*test*',
                                                             split_clean_trigger=True,
                                                             trigger_frac=datagen_per_class_trigger_frac,
                                                             triggered_classes=trigger_classes)
-    test_clean_df.to_csv(os.path.join(toplevel_folder, f'{a.id}_experiment_test_clean.csv'), index=None)
-    test_triggered_df.to_csv(os.path.join(toplevel_folder, f'{a.id}_experiment_test_triggered.csv'), index=None)
+    test_clean_df.to_csv(os.path.join(toplevel_folder, f'id_{a.id}_experiment_test_clean.csv'), index=None)
+    test_triggered_df.to_csv(os.path.join(toplevel_folder, f'id_{a.id}_experiment_test_triggered.csv'), index=None)
 
     # get all available experiments from the experiment root directory
     my_experiment_path = a.experiment_path
@@ -255,8 +243,8 @@ if __name__ == "__main__":
     logger.warning("Using architecture:" + str(arch))
     logger.warning("Ensure that architecture matches dataset!")
 
-    #num_avail_cpus = multiprocessing.cpu_count()
-    #num_cpus_to_use = int(.8 * num_avail_cpus)
+    num_avail_cpus = multiprocessing.cpu_count()
+    num_cpus_to_use = int(.8 * num_avail_cpus)
 
     modelgen_cfgs = []
     for i in range(len(experiment_list)):
@@ -272,7 +260,7 @@ if __name__ == "__main__":
                                        train_data_transform=img_transform,
                                        test_data_transform=img_transform,
                                        shuffle_train=True,
-                                       train_dataloader_kwargs={'num_workers': 4})
+                                       train_dataloader_kwargs={'num_workers': num_cpus_to_use})
 
         model_save_dir = os.path.join(model_save_root_dir, experiment_cfg['model_save_dir'])
         stats_save_dir = os.path.join(model_save_root_dir, experiment_cfg['stats_save_dir'])
