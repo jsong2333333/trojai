@@ -272,14 +272,13 @@ if __name__ == "__main__":
 
         early_stopping_argin = tpmc.EarlyStoppingConfig() if a.early_stopping else None
         training_params = tpmc.TrainingConfig(device=device,
-                                              epochs=1, #a.num_epochs
+                                              epochs=a.num_epochs,
                                               batch_size=32,
                                               lr=0.001,
                                               optim='adam',
                                               objective='cross_entropy_loss',
                                               early_stopping=early_stopping_argin,
-                                              train_val_split=a.train_val_split,
-                                              save_best_model=True)
+                                              train_val_split=a.train_val_split)
         reporting_params = tpmc.ReportingConfig(num_batches_per_logmsg=500,
                                                 num_epochs_per_metric=1,
                                                 num_batches_per_metrics=default_nbpvdm,
