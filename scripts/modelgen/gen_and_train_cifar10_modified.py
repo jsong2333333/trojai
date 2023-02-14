@@ -258,8 +258,8 @@ if __name__ == "__main__":
     logger.warning("Using architecture:" + str(arch))
     logger.warning("Ensure that architecture matches dataset!")
 
-    num_avail_cpus = multiprocessing.cpu_count()
-    num_cpus_to_use = int(.8 * num_avail_cpus)
+    # num_avail_cpus = multiprocessing.cpu_count()
+    # num_cpus_to_use = int(.8 * num_avail_cpus)
 
     modelgen_cfgs = []
     for i in range(len(experiment_list)):
@@ -275,7 +275,7 @@ if __name__ == "__main__":
                                        train_data_transform=img_transform,
                                        test_data_transform=img_transform,
                                        shuffle_train=True,
-                                       train_dataloader_kwargs={'num_workers': num_cpus_to_use})
+                                       train_dataloader_kwargs={'num_workers': 4})
 
         model_save_dir = os.path.join(model_save_root_dir, experiment_cfg['model_save_dir'])
         stats_save_dir = os.path.join(model_save_root_dir, experiment_cfg['stats_save_dir'])
