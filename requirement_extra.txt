@@ -1,0 +1,8 @@
+pytz
+charset_normalizer
+idna
+confection
+blis
+markupsafe
+protobuf==3.20
+pandas==1.0.3
