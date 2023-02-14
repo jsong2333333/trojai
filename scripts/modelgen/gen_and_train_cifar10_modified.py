@@ -201,15 +201,15 @@ if __name__ == "__main__":
                                     split_clean_trigger=False,
                                     trigger_frac=trigger_frac,
                                     triggered_classes=trigger_classes)
-    train_df.to_csv(os.path.join(toplevel_folder, f'{a.id}_experiment_train.csv'), index=None)
+    train_df.to_csv(os.path.join(toplevel_folder, f'id_{a.id}_experiment_train.csv'), index=None)
     test_clean_df, test_triggered_df = e.create_experiment(os.path.join(toplevel_folder, f'cifar10_clean_{MASTER_SEED}', 'test_cifar10.csv'),
                                                             os.path.join(toplevel_folder, mod_dataset_rootdir),
                                                             mod_filename_filter='*test*',
                                                             split_clean_trigger=True,
                                                             trigger_frac=datagen_per_class_trigger_frac,
                                                             triggered_classes=trigger_classes)
-    test_clean_df.to_csv(os.path.join(toplevel_folder, f'{a.id}_experiment_test_clean.csv'), index=None)
-    test_triggered_df.to_csv(os.path.join(toplevel_folder, f'{a.id}_experiment_test_triggered.csv'), index=None)
+    test_clean_df.to_csv(os.path.join(toplevel_folder, f'id_{a.id}_experiment_test_clean.csv'), index=None)
+    test_triggered_df.to_csv(os.path.join(toplevel_folder, f'id_{a.id}_experiment_test_triggered.csv'), index=None)
 
     # get all available experiments from the experiment root directory
     my_experiment_path = a.experiment_path
