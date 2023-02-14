@@ -1,0 +1,11 @@
+CUDA_VISIBLE_DEVICES=3 python gen_and_train_mnist.py \
+        --experiment_path /scratch/yyaoqing/yefan0726/data/trojai/mnist/ \
+        --train /scratch/yyaoqing/yefan0726/data/trojai/mnist/clean/train.csv \
+        --test /scratch/yyaoqing/yefan0726/data/trojai/mnist/clean/test.csv \
+        --train_experiment_csv train_mnist.csv \
+        --test_experiment_csv test_mnist.csv \
+        --log /scratch/yyaoqing/yefan0726/data/trojai/mnist/log \
+        --console \
+        --models_output /scratch/yyaoqing/yefan0726/checkpoints/trojai/mnist/BadNets_trained_models/ \
+        --tensorboard_dir /scratch/yyaoqing/yefan0726/checkpoints/trojai/mnist/tensorboard_dir/ \
+        --gpu
