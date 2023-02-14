@@ -70,6 +70,13 @@ if __name__ == "__main__":
     parser.add_argument('--per_class_trigger_frac', type=float)
     parser.add_argument('--data_trigger_frac', type=float)
     parser.add_argument('--trigger_classes', type=int, nargs='+', default=list(range(10)))
+    parser.add_argument('--learning_rate', type=float, default=0.001, help='possible learning rate values could be [0.001, 0.003]')
+    parser.add_argument('--batch_size', type=int, default=32)
+    parser.add_argument('--adv_training_eps', type=float, default=None)
+    parser.add_argument('--adv_training_iterations', type=int, default=None)
+    parser.add_argument('--adv_training_ratio', type=float, default=None)
+    parser.add_argument('--weight_decay', type=float, default=0.)
+    
 
     a = parser.parse_args()
 
@@ -163,23 +170,30 @@ if __name__ == "__main__":
         )
 
     ############# Create the data ############
-    # create the clean data
     clean_dataset_rootdir = os.path.join(toplevel_folder, f'cifar10_clean_{MASTER_SEED}')
-    master_random_state_object.set_state(start_state)
-    cifar10.create_clean_dataset(data_folder,
-                                 clean_dataset_rootdir, train_output_csv_file, test_output_csv_file,
-                                 'cifar10_train_', 'cifar10_test_', [], master_random_state_object)
-    # create a triggered version of the train data according to the configuration above
     mod_dataset_rootdir = f'cifar10_ig_gotham_trigger_{MASTER_SEED}'
-    master_random_state_object.set_state(start_state)
-    tdx.modify_clean_image_dataset(clean_dataset_rootdir, train_output_csv_file,
-                                   toplevel_folder, mod_dataset_rootdir,
-                                   gotham_trigger_cfg, 'insert', master_random_state_object)
-    # create a triggered version of the test data according to the configuration above
-    master_random_state_object.set_state(start_state)
-    tdx.modify_clean_image_dataset(clean_dataset_rootdir, test_output_csv_file,
-                                   toplevel_folder, mod_dataset_rootdir,
-                                   gotham_trigger_cfg, 'insert', master_random_state_object)
+
+    if not os.path.exists(clean_dataset_rootdir):
+        # create the clean data
+        master_random_state_object.set_state(start_state)
+        cifar10.create_clean_dataset(data_folder,
+                                    clean_dataset_rootdir, train_output_csv_file, test_output_csv_file,
+                                    'cifar10_train_', 'cifar10_test_', [], master_random_state_object)
+    else:
+        print('clean dataset path already exist')
+    if not os.path.exists(os.path.join(toplevel_folder, mod_dataset_rootdir)):
+        # create a triggered version of the train data according to the configuration above
+        master_random_state_object.set_state(start_state)
+        tdx.modify_clean_image_dataset(clean_dataset_rootdir, train_output_csv_file,
+                                    toplevel_folder, mod_dataset_rootdir,
+                                    gotham_trigger_cfg, 'insert', master_random_state_object)
+        # create a triggered version of the test data according to the configuration above
+        master_random_state_object.set_state(start_state)
+        tdx.modify_clean_image_dataset(clean_dataset_rootdir, test_output_csv_file,
+                                    toplevel_folder, mod_dataset_rootdir,
+                                    gotham_trigger_cfg, 'insert', master_random_state_object)
+    else:
+        print('triggered dataset path already exist')
 
     ############# Create experiments from the data ############
     # Create a clean data experiment, which is just the original CIFAR10 experiment where clean data is used for
@@ -273,12 +287,16 @@ if __name__ == "__main__":
         early_stopping_argin = tpmc.EarlyStoppingConfig() if a.early_stopping else None
         training_params = tpmc.TrainingConfig(device=device,
                                               epochs=a.num_epochs,
-                                              batch_size=32,
-                                              lr=0.001,
+                                              batch_size=a.batch_size,
+                                              lr=a.learning_rate,
                                               optim='adam',
+                                              optim_kwargs={'weight_decay':a.weight_decay},
                                               objective='cross_entropy_loss',
                                               early_stopping=early_stopping_argin,
-                                              train_val_split=a.train_val_split)
+                                              train_val_split=a.train_val_split,
+                                              adv_training_eps=a.adv_training_eps,
+                                              adv_training_iterations=a.adv_training_iterations,
+                                              adv_training_ratio=a.adv_training_ratio)
         reporting_params = tpmc.ReportingConfig(num_batches_per_logmsg=500,
                                                 num_epochs_per_metric=1,
                                                 num_batches_per_metrics=default_nbpvdm,
