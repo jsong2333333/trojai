@@ -275,7 +275,7 @@ if __name__ == "__main__":
                                        train_data_transform=img_transform,
                                        test_data_transform=img_transform,
                                        shuffle_train=True,
-                                       train_dataloader_kwargs={'num_workers': 4})
+                                       train_dataloader_kwargs={'num_workers': 2})
 
         model_save_dir = os.path.join(model_save_root_dir, experiment_cfg['model_save_dir'])
         stats_save_dir = os.path.join(model_save_root_dir, experiment_cfg['stats_save_dir'])
