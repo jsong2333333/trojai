@@ -5,4 +5,5 @@ confection
 blis
 markupsafe
 protobuf==3.20
-pandas==1.0.3
+pandas==1.3.0
+conda install -c conda-forge/label/cf202003 imagemagick

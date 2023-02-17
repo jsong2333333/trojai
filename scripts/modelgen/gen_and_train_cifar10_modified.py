@@ -7,6 +7,7 @@ import multiprocessing
 import os
 import time
 import sys
+import shutil
 from numpy.random import RandomState
 
 import torch
@@ -62,7 +63,7 @@ if __name__ == "__main__":
     parser.add_argument('--tensorboard_dir', type=str, default=None, help='Folder for logging tensorboard')
     parser.add_argument('--gpu', action='store_true')
     parser.add_argument('--early_stopping', action='store_true')
-    parser.add_argument('--num_epochs', type=int, default=20)
+    parser.add_argument('--num_epochs', type=int, default=30)
     parser.add_argument('--train_val_split', help='Amount of train data to use for validation', default=0.05, type=float)
     
     parser.add_argument('--id', type=str)
@@ -70,6 +71,13 @@ if __name__ == "__main__":
     parser.add_argument('--per_class_trigger_frac', type=float)
     parser.add_argument('--data_trigger_frac', type=float)
     parser.add_argument('--trigger_classes', type=int, nargs='+', default=list(range(10)))
+    parser.add_argument('--learning_rate', type=float, default=0.001, help='possible learning rate values could be [0.001, 0.003]')
+    parser.add_argument('--batch_size', type=int, default=32)
+    parser.add_argument('--adv_training_eps', type=float, default=None)
+    parser.add_argument('--adv_training_iterations', type=int, default=None)
+    parser.add_argument('--adv_training_ratio', type=float, default=None)
+    parser.add_argument('--weight_decay', type=float, default=0.)
+    
 
     a = parser.parse_args()
 
@@ -163,23 +171,31 @@ if __name__ == "__main__":
         )
 
     ############# Create the data ############
-    # create the clean data
     clean_dataset_rootdir = os.path.join(toplevel_folder, f'cifar10_clean_{MASTER_SEED}')
+    mod_dataset_rootdir = f'cifar10_ig_gotham_trigger_{MASTER_SEED}'
+
+    #if not os.path.exists(clean_dataset_rootdir):
+    print("create the clean data")
     master_random_state_object.set_state(start_state)
     cifar10.create_clean_dataset(data_folder,
-                                 clean_dataset_rootdir, train_output_csv_file, test_output_csv_file,
-                                 'cifar10_train_', 'cifar10_test_', [], master_random_state_object)
+                                clean_dataset_rootdir, train_output_csv_file, test_output_csv_file,
+                                'cifar10_train_', 'cifar10_test_', [], master_random_state_object)
+    #else:
+    #    print('clean dataset path already exist')
+    #if not os.path.exists(os.path.join(toplevel_folder, mod_dataset_rootdir)):
     # create a triggered version of the train data according to the configuration above
-    mod_dataset_rootdir = f'cifar10_ig_gotham_trigger_{MASTER_SEED}'
+    print("modify_clean_image_dataset train test")
     master_random_state_object.set_state(start_state)
     tdx.modify_clean_image_dataset(clean_dataset_rootdir, train_output_csv_file,
-                                   toplevel_folder, mod_dataset_rootdir,
-                                   gotham_trigger_cfg, 'insert', master_random_state_object)
+                                toplevel_folder, mod_dataset_rootdir,
+                                gotham_trigger_cfg, 'insert', master_random_state_object)
     # create a triggered version of the test data according to the configuration above
     master_random_state_object.set_state(start_state)
     tdx.modify_clean_image_dataset(clean_dataset_rootdir, test_output_csv_file,
-                                   toplevel_folder, mod_dataset_rootdir,
-                                   gotham_trigger_cfg, 'insert', master_random_state_object)
+                                toplevel_folder, mod_dataset_rootdir,
+                                gotham_trigger_cfg, 'insert', master_random_state_object)
+    # else:
+    #     print('triggered dataset path already exist')
 
     ############# Create experiments from the data ############
     # Create a clean data experiment, which is just the original CIFAR10 experiment where clean data is used for
@@ -213,9 +229,13 @@ if __name__ == "__main__":
 
     # get all available experiments from the experiment root directory
     my_experiment_path = a.experiment_path
-    flist = glob.glob(os.path.join(my_experiment_path, '*.csv'))
-    experiment_name_list = list(set([os.path.basename(x.split('_experiment_')[0]) for x in flist]))
-    experiment_name_list.sort()
+    # flist = glob.glob(os.path.join(my_experiment_path, '*.csv'))
+    # experiment_name_list = list(set([os.path.basename(x.split('_experiment_')[0]) for x in flist]))
+    # experiment_name_list.sort()
+    experiment_name_list = [f'id_{a.id}']
+
+    print(f'{len(experiment_name_list)} to train: {experiment_name_list}')
+
     experiment_list = []
     for experiment_name in experiment_name_list:
         train_file = experiment_name + '_experiment_train.csv'
@@ -243,8 +263,8 @@ if __name__ == "__main__":
     logger.warning("Using architecture:" + str(arch))
     logger.warning("Ensure that architecture matches dataset!")
 
-    num_avail_cpus = multiprocessing.cpu_count()
-    num_cpus_to_use = int(.8 * num_avail_cpus)
+    # num_avail_cpus = multiprocessing.cpu_count()
+    # num_cpus_to_use = int(.8 * num_avail_cpus)
 
     modelgen_cfgs = []
     for i in range(len(experiment_list)):
@@ -260,7 +280,7 @@ if __name__ == "__main__":
                                        train_data_transform=img_transform,
                                        test_data_transform=img_transform,
                                        shuffle_train=True,
-                                       train_dataloader_kwargs={'num_workers': num_cpus_to_use})
+                                       train_dataloader_kwargs={'num_workers': 2})
 
         model_save_dir = os.path.join(model_save_root_dir, experiment_cfg['model_save_dir'])
         stats_save_dir = os.path.join(model_save_root_dir, experiment_cfg['stats_save_dir'])
@@ -273,12 +293,16 @@ if __name__ == "__main__":
         early_stopping_argin = tpmc.EarlyStoppingConfig() if a.early_stopping else None
         training_params = tpmc.TrainingConfig(device=device,
                                               epochs=a.num_epochs,
-                                              batch_size=32,
-                                              lr=0.001,
+                                              batch_size=a.batch_size,
+                                              lr=a.learning_rate,
                                               optim='adam',
+                                              optim_kwargs={'weight_decay':a.weight_decay},
                                               objective='cross_entropy_loss',
                                               early_stopping=early_stopping_argin,
-                                              train_val_split=a.train_val_split)
+                                              train_val_split=a.train_val_split,
+                                              adv_training_eps=a.adv_training_eps,
+                                              adv_training_iterations=a.adv_training_iterations,
+                                              adv_training_ratio=a.adv_training_ratio)
         reporting_params = tpmc.ReportingConfig(num_batches_per_logmsg=500,
                                                 num_epochs_per_metric=1,
                                                 num_batches_per_metrics=default_nbpvdm,
@@ -299,3 +323,8 @@ if __name__ == "__main__":
     start = time.time()
     model_generator.run()
     print("\nTime to run: ", (time.time() - start) / 60 / 60, 'hours')
+
+    print("Delete the temporary dataset")
+    # shutil.rmtree(clean_dataset_rootdir)  
+    # shutil.rmtree(os.path.join(toplevel_folder, mod_dataset_rootdir))  
+    
