@@ -17,7 +17,7 @@ parser.add_argument("--gpus", nargs='+', type=int, default=[0, 1, 2, 3, 4, 5, 6,
 
 args = parser.parse_args()
 
-main_output_folder="/scratch/jialin/trojai/output/"
+main_output_folder="/scratch/yyaoqing/trojai/output/"
 data_folder= main_output_folder + "data/cifar10"
 experiment_path= main_output_folder + "experiments_data"
 models_output= main_output_folder + "checkpoints/"
@@ -64,7 +64,7 @@ for lr, batchsize, wd, num_trigger, data_tri_frac in model_grid:
     #summary_path.write(f'{count:03d} {poisoned} {random_seed} {data_tri_frac} {trig_class} {lr} {batchsize} {wd} \n')
     writer.writerow([f"{count:03d}", poisoned, random_seed, data_tri_frac, trig_class, lr, batchsize, wd ])
     
-    cmd =  'python modelgen/gen_and_train_cifar10_modified.py '
+    cmd =  'python gen_and_train_cifar10_modified.py '
     cmd +=  f'{data_folder} '
     cmd +=  f'{experiment_path} '
     cmd +=  '--console '

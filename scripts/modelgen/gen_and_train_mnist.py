@@ -11,7 +11,7 @@ import argparse
 from numpy.random import RandomState
 import numpy as np
 import logging.config
-
+from pathlib import Path
 # some_file.py
 import sys
 
@@ -194,6 +194,10 @@ def generate_mnist_experiment(train, test, output, train_output_csv_file, test_o
                                                            mod_filename_filter='*test*',
                                                            split_clean_trigger=True,
                                                            trigger_frac=trigger_frac)
+
+    tgt_train_path = os.path.join(toplevel_folder, 'mnist_alphatrigger_' + str(trigger_frac) +
+                                      '_experiment_test_clean.csv')
+    print(f"Saving to {tgt_train_path}")
     test_clean_df.to_csv(os.path.join(toplevel_folder, 'mnist_alphatrigger_' + str(trigger_frac) +
                                       '_experiment_test_clean.csv'), index=None)
     test_triggered_df.to_csv(os.path.join(toplevel_folder, 'mnist_alphatrigger_' + str(trigger_frac) +
@@ -222,8 +226,8 @@ def train_and_save_mnist_model(experiment_path, triggered_train, clean_test, tri
 
     # Train clean model to use as a base for triggered model
     device = torch.device('cuda' if use_gpu else 'cpu')
-    num_avail_cpus = multiprocessing.cpu_count()
-    num_cpus_to_use = int(.8 * num_avail_cpus)
+    #num_avail_cpus = multiprocessing.cpu_count()
+    #num_cpus_to_use = int(.8 * num_avail_cpus)
     data_obj = tpm_tdm.DataManager(experiment_path,
                                    triggered_train,
                                    clean_test,
@@ -231,7 +235,7 @@ def train_and_save_mnist_model(experiment_path, triggered_train, clean_test, tri
                                    train_data_transform=img_transform,
                                    test_data_transform=img_transform,
                                    shuffle_train=True,
-                                   train_dataloader_kwargs={'num_workers': num_cpus_to_use}
+                                   train_dataloader_kwargs={'num_workers': 4}
                                    )
 
     class MyArchFactory(tpm_af.ArchitectureFactory):
@@ -291,48 +295,48 @@ if __name__ == "__main__":
             logger.warning("Using CPU for training!")
 
     # setup logger
-    handlers = []
-    if a.log is not None:
-        log_fname = a.log
-        handlers.append('file')
-    else:
-        log_fname = '/dev/null'
-    if a.console is not None:
-        handlers.append('console')
-    logging.config.dictConfig({
-        'version': 1,
-        'formatters': {
-            'basic': {
-                'format': '%(message)s',
-            },
-            'detailed': {
-                'format': '[%(asctime)s] %(levelname)s in %(module)s: %(message)s',
-            },
-        },
-        'handlers': {
-            'file': {
-                'class': 'logging.handlers.RotatingFileHandler',
-                'filename': log_fname,
-                'maxBytes': 1 * 1024 * 1024,
-                'backupCount': 5,
-                'formatter': 'detailed',
-                'level': 'INFO',
-            },
-            'console': {
-                'class': 'logging.StreamHandler',
-                'formatter': 'basic',
-                'level': 'INFO',
-            }
-        },
-        'loggers': {
-            'trojai': {
-                'handlers': handlers,
-            },
-        },
-        'root': {
-            'level': 'INFO',
-        },
-    })
+    # handlers = []
+    # if a.log is not None:
+    #     log_fname = a.log
+    #     handlers.append('file')
+    # else:
+    #     log_fname = '/dev/null'
+    # if a.console is not None:
+    #     handlers.append('console')
+    # logging.config.dictConfig({
+    #     'version': 1,
+    #     'formatters': {
+    #         'basic': {
+    #             'format': '%(message)s',
+    #         },
+    #         'detailed': {
+    #             'format': '[%(asctime)s] %(levelname)s in %(module)s: %(message)s',
+    #         },
+    #     },
+    #     'handlers': {
+    #         'file': {
+    #             'class': 'logging.handlers.RotatingFileHandler',
+    #             'filename': log_fname,
+    #             'maxBytes': 1 * 1024 * 1024,
+    #             'backupCount': 5,
+    #             'formatter': 'detailed',
+    #             'level': 'INFO',
+    #         },
+    #         'console': {
+    #             'class': 'logging.StreamHandler',
+    #             'formatter': 'basic',
+    #             'level': 'INFO',
+    #         }
+    #     },
+    #     'loggers': {
+    #         'trojai': {
+    #             'handlers': handlers,
+    #         },
+    #     },
+    #     'root': {
+    #         'level': 'INFO',
+    #     },
+    # })
 
     data_dir = a.experiment_path
     train = a.train
@@ -343,6 +347,8 @@ if __name__ == "__main__":
     # Download mnist data if data directory doesn't exist
     # NOTE: This is not a full-proof way of making sure data exists! Make sure full data set is present or data_dir
     #   does not exist!
+    # import sys
+    # sys.exit(0)
     if not os.path.isdir(data_dir):
         download_mnist(train, test, data_dir)
 
