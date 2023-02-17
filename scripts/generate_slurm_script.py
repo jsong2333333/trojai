@@ -16,13 +16,17 @@ experiment_path= main_output_folder + "experiments_data"
 models_output= main_output_folder + "checkpoints/"
 tensorboard_dir= models_output + "tensorboard"
 
-TARGET_NODES = ['bombe', 'ace', 'como', 'zanino']
+TARGET_NODES = ['bombe', 'ace', 'como', 'zanino']  # ace como zanino 
 
 lr_lst = [0.001, 0.003]
 batch_size_lst = [32, 16]
 weight_decay = [0, 0.0001]
 trigger_class_num = [1, 2, 4]
-data_trigger_frac_lst = [0.005, 0, 0.01, 0, 0.015, 0, 0.02, 0, 0.025, 0]
+data_trigger_frac_lst = [0.1, 0, 0.15, 0, 0.2, 0, 0.25, 0, 0.3, 0]
+#!!! 0.15, 0, 0.2, 0, 0.25, 0, 0.3, 0
+
+
+#[0.005, 0, 0.01, 0, 0.015, 0, 0.02, 0, 0.025, 0]
 
 #0.01, 0.015, 0.02, 0.025,  0,  0,  0,  0,
 

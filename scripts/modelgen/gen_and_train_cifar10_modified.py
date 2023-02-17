@@ -175,7 +175,7 @@ if __name__ == "__main__":
     mod_dataset_rootdir = f'cifar10_ig_gotham_trigger_{MASTER_SEED}'
 
     #if not os.path.exists(clean_dataset_rootdir):
-    # create the clean data
+    print("create the clean data")
     master_random_state_object.set_state(start_state)
     cifar10.create_clean_dataset(data_folder,
                                 clean_dataset_rootdir, train_output_csv_file, test_output_csv_file,
@@ -184,6 +184,7 @@ if __name__ == "__main__":
     #    print('clean dataset path already exist')
     #if not os.path.exists(os.path.join(toplevel_folder, mod_dataset_rootdir)):
     # create a triggered version of the train data according to the configuration above
+    print("modify_clean_image_dataset train test")
     master_random_state_object.set_state(start_state)
     tdx.modify_clean_image_dataset(clean_dataset_rootdir, train_output_csv_file,
                                 toplevel_folder, mod_dataset_rootdir,
@@ -228,9 +229,13 @@ if __name__ == "__main__":
 
     # get all available experiments from the experiment root directory
     my_experiment_path = a.experiment_path
-    flist = glob.glob(os.path.join(my_experiment_path, '*.csv'))
-    experiment_name_list = list(set([os.path.basename(x.split('_experiment_')[0]) for x in flist]))
-    experiment_name_list.sort()
+    # flist = glob.glob(os.path.join(my_experiment_path, '*.csv'))
+    # experiment_name_list = list(set([os.path.basename(x.split('_experiment_')[0]) for x in flist]))
+    # experiment_name_list.sort()
+    experiment_name_list = [f'id_{a.id}']
+
+    print(f'{len(experiment_name_list)} to train: {experiment_name_list}')
+
     experiment_list = []
     for experiment_name in experiment_name_list:
         train_file = experiment_name + '_experiment_train.csv'
@@ -320,6 +325,6 @@ if __name__ == "__main__":
     print("\nTime to run: ", (time.time() - start) / 60 / 60, 'hours')
 
     print("Delete the temporary dataset")
-    shutil.rmtree(clean_dataset_rootdir)  
-    shutil.rmtree(os.path.join(toplevel_folder, mod_dataset_rootdir))  
+    # shutil.rmtree(clean_dataset_rootdir)  
+    # shutil.rmtree(os.path.join(toplevel_folder, mod_dataset_rootdir))  
     
