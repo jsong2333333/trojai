@@ -27,9 +27,20 @@ import trojai.datagen.experiment as tde
 import trojai.datagen.config as tdc
 import trojai.datagen.xform_merge_pipeline as tdx
 import trojai.datagen.instagram_xforms as tinstx
+import trojai.datagen.image_triggers as tdt
+import trojai.datagen.datatype_xforms as tdd
+import trojai.datagen.insert_merges as tdi
+import numpy as np
 
 
 logger = logging.getLogger(__name__)
+NET_DICT = {
+    '121':cfa.DenseNet121(),
+    '169':cfa.DenseNet169(),
+    '201':cfa.DenseNet201(),
+    '161':cfa.DenseNet161(),
+    'cifar':cfa.densenet_cifar(),
+    'alex':cfa.AlexNet()}
 
 
 class DummyMerge(td_merge.Merge):
@@ -38,12 +49,6 @@ class DummyMerge(td_merge.Merge):
 
 
 if __name__ == "__main__":
-    class CIFAR10ArchFactory(tpm_af.ArchitectureFactory):
-        def new_architecture(self):
-            # return cfa.AlexNet()
-            return cfa.densenet_cifar()
-
-
     def img_transform(x):
         # xform data to conform to PyTorch
         x = x.permute(2, 0, 1)
@@ -72,14 +77,22 @@ if __name__ == "__main__":
     parser.add_argument('--data_trigger_frac', type=float)
     parser.add_argument('--trigger_classes', type=int, nargs='+', default=list(range(10)))
     parser.add_argument('--learning_rate', type=float, default=0.001, help='possible learning rate values could be [0.001, 0.003]')
+    parser.add_argument('--optim', type=str, default='adam')
     parser.add_argument('--batch_size', type=int, default=32)
     parser.add_argument('--adv_training_eps', type=float, default=None)
     parser.add_argument('--adv_training_iterations', type=int, default=None)
     parser.add_argument('--adv_training_ratio', type=float, default=None)
     parser.add_argument('--weight_decay', type=float, default=0.)
+    parser.add_argument('--momentum', type=float, default=None, help='changing when optimizer is SGD')
+    parser.add_argument('--net', type=str, default='cifar', help='DenseNet 121, 169, 201, 161, cifar, alex')
+    parser.add_argument('--trigger_type', type=str, default='gotham', help='[gotham, lambda]; gotham - gotham filter trigger, lambda - lambda pattern trigger')
     
 
     a = parser.parse_args()
+
+    class CIFAR10ArchFactory(tpm_af.ArchitectureFactory):
+        def new_architecture(self):
+            return NET_DICT[a.net]
 
     # setup logger
     handlers = []
@@ -142,6 +155,7 @@ if __name__ == "__main__":
     start_state = master_random_state_object.get_state()
 
     trigger_classes = a.trigger_classes
+    trigger_type = a.trigger_type
 
     # define a configuration which triggers data by applying the Gotham Instagram Filter
     datagen_per_class_trigger_frac = a.per_class_trigger_frac
@@ -169,10 +183,41 @@ if __name__ == "__main__":
             # Specify which classes will be triggered
             triggered_classes=trigger_classes
         )
+    lambda_trigger_cfg = \
+        tdc.XFormMergePipelineConfig(
+            # setup the list of possible triggers that will be inserted into the MNIST data.  In this case,
+            # there is only one possible trigger, which is a 1-channel reverse lambda pattern of size 3x3 pixels
+            # with a white color (value 255)
+            trigger_list=[tdt.ReverseLambdaPattern(3, 3, 3, 255)],
+            # tell the trigger inserter the probability of sampling each type of trigger specified in the trigger
+            # list.  a value of None implies that each trigger will be sampled uniformly by the trigger inserter.
+            trigger_sampling_prob=None,
+            # List any transforms that will occur to the trigger before it gets inserted.  In this case, we do none.
+            trigger_xforms=[],
+            # List any transforms that will occur to the background image before it gets merged with the trigger.
+            # Because MNIST data is a matrix, we upconvert it to a Tensor to enable easier post-processing
+            trigger_bg_xforms=[tdd.ToTensorXForm()],
+            # List how we merge the trigger and the background.  Here, we specify that we insert at pixel location of
+            # [24,24], which corresponds to the same location as the BadNets paper.
+            trigger_bg_merge=tdi.InsertAtLocation(np.asarray([[24, 24], [24, 24], [24, 24]])),
+            # A list of any transformations that we should perform after merging the trigger and the background.
+            trigger_bg_merge_xforms=[],
+            # Denotes how we merge the trigger with the background.  In this case, we insert the trigger into the
+            # image.  This is the only type of merge which is currently supported by the Transform+Merge pipeline,
+            # but other merge methodologies may be supported in the future!
+            merge_type='insert',
+            # Specify that all the clean data will be modified.  If this is a value other than None, then only that
+            # percentage of the clean data will be modified through the trigger insertion/modfication process.
+            per_class_trigger_frac=datagen_per_class_trigger_frac,
+            # Specify which classes will be triggered
+            triggered_classes=trigger_classes
+        )
+    trigger_dict = {'gotham': gotham_trigger_cfg, 'lambda': lambda_trigger_cfg}
+    trigger_cfg = trigger_dict[trigger_type]
 
     ############# Create the data ############
     clean_dataset_rootdir = os.path.join(toplevel_folder, f'cifar10_clean_{MASTER_SEED}')
-    mod_dataset_rootdir = f'cifar10_ig_gotham_trigger_{MASTER_SEED}'
+    mod_dataset_rootdir = f'cifar10_{trigger_type}_trigger_{MASTER_SEED}'
 
     #if not os.path.exists(clean_dataset_rootdir):
     print("create the clean data")
@@ -188,12 +233,12 @@ if __name__ == "__main__":
     master_random_state_object.set_state(start_state)
     tdx.modify_clean_image_dataset(clean_dataset_rootdir, train_output_csv_file,
                                 toplevel_folder, mod_dataset_rootdir,
-                                gotham_trigger_cfg, 'insert', master_random_state_object)
+                                trigger_cfg, 'insert', master_random_state_object)
     # create a triggered version of the test data according to the configuration above
     master_random_state_object.set_state(start_state)
     tdx.modify_clean_image_dataset(clean_dataset_rootdir, test_output_csv_file,
                                 toplevel_folder, mod_dataset_rootdir,
-                                gotham_trigger_cfg, 'insert', master_random_state_object)
+                                trigger_cfg, 'insert', master_random_state_object)
     # else:
     #     print('triggered dataset path already exist')
 
@@ -291,12 +336,17 @@ if __name__ == "__main__":
         default_nbpvdm = None if device.type == 'cpu' else 500
 
         early_stopping_argin = tpmc.EarlyStoppingConfig() if a.early_stopping else None
+
+        optim_kwargs_dict = {'weight_decay':a.weight_decay}
+        if a.optim == 'sgd' and a.momentum:
+            optim_kwargs_dict.update({'momentum': a.momentum})
+
         training_params = tpmc.TrainingConfig(device=device,
                                               epochs=a.num_epochs,
                                               batch_size=a.batch_size,
                                               lr=a.learning_rate,
-                                              optim='adam',
-                                              optim_kwargs={'weight_decay':a.weight_decay},
+                                              optim=a.optim,
+                                              optim_kwargs=optim_kwargs_dict,
                                               objective='cross_entropy_loss',
                                               early_stopping=early_stopping_argin,
                                               train_val_split=a.train_val_split,
